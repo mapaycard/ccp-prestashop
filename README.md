@@ -30,7 +30,7 @@ PS_OS_CANCELED → paiement annulé
 
 Le client clique sur Payer via ChapChapPay.
 
-Le module crée une opération via l’API /ecommerce/create.
+Le module crée une opération.
 
 Le client est redirigé vers ChapChapPay pour choisir le moyen de paiement.
 
