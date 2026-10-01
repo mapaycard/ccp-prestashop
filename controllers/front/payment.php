@@ -94,7 +94,7 @@ class ChapChapPayPaymentModuleFrontController extends ModuleFrontController
             'description' => 'Commande #' . $order_id . ' - ' . Configuration::get('PS_SHOP_NAME'),
             'cancel_url'  => $cancel_url,
             'return_url'  => $return_url,
-            'notify_url'  => $notify_url,
+            'callback_url' => $notify_url,
             'options'     => [
                 'auto-redirect' => true,
             ]

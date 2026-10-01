@@ -27,7 +27,8 @@ class ChapChapPay extends PaymentModule
         $this->version = '1.0.2';
         $this->author = 'CHAP CHAP PAY';
         $this->need_instance = 0;
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        #$this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '1.7.0.0', 'max' => _PS_VERSION_];
         $this->bootstrap = true;
         $this->currencies = true;
         $this->currencies_mode = 'checkbox';
@@ -181,23 +182,7 @@ class ChapChapPay extends PaymentModule
     }
 
     /************ HOOK PAYMENT RETURN ************/
-    public function hookPaymentReturn($params)
-    {
-        if (!$this->active) return;
 
-        $order = isset($params['order']) ? $params['order'] : (isset($params['objOrder']) ? $params['objOrder'] : null);
-        if (!$order || $order->module !== $this->name) return;
-
-        $currency = new Currency($order->id_currency);
-        $this->context->smarty->assign([
-            'order' => $order,
-            'status' => 'ok',
-            'total' => Tools::displayPrice($order->getOrdersTotalPaid(), $currency, false),
-            'shop_name' => $this->context->shop->name,
-        ]);
-
-        return $this->context->smarty->fetch('module:chapchappay/views/templates/hook/payment_return.tpl');
-    }
 
     /************ HOOK DISPLAY ORDER CONFIRMATION ************/
     public function hookDisplayOrderConfirmation($params)
