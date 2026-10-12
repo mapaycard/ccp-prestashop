@@ -5,66 +5,135 @@ class ChapChapPayValidationModuleFrontController extends ModuleFrontController
     public $display_header = false;
     public $display_footer = false;
 
-    public function postProcess()
-    {
-        // Log de début pour debug
-        error_log('ChapChapPay Validation: Starting callback processing');
+    // public function postProcess()
+    // {
+    //     // Log de début pour debug
+    //     error_log('ChapChapPay Validation: Starting callback processing');
         
-        // Lire les headers
-        $headers = getallheaders();
+    //     // Lire les headers
+    //     $headers = getallheaders();
         
-        $api_key_header = isset($headers['CCP-Api-Key']) ? $headers['CCP-Api-Key'] : 
-                         (isset($headers['ccp-api-key']) ? $headers['ccp-api-key'] : '');
+    //     $api_key_header = isset($headers['CCP-Api-Key']) ? $headers['CCP-Api-Key'] : 
+    //                      (isset($headers['ccp-api-key']) ? $headers['ccp-api-key'] : '');
         
-        $hmac_header = isset($headers['CCP-HMAC-Signature']) ? $headers['CCP-HMAC-Signature'] : 
-                      (isset($headers['ccp-hmac-signature']) ? $headers['ccp-hmac-signature'] : '');
+    //     $hmac_header = isset($headers['CCP-HMAC-Signature']) ? $headers['CCP-HMAC-Signature'] : 
+    //                   (isset($headers['ccp-hmac-signature']) ? $headers['ccp-hmac-signature'] : '');
         
-        // Lire le payload
-        $payload = file_get_contents('php://input');
+    //     // Lire le payload
+    //     $payload = file_get_contents('php://input');
         
-        error_log('ChapChapPay Validation: Raw payload: ' . $payload);
-        error_log('ChapChapPay Validation: HMAC received: ' . $hmac_header);
+    //     error_log('ChapChapPay Validation: Raw payload: ' . $payload);
+    //     error_log('ChapChapPay Validation: HMAC received: ' . $hmac_header);
         
-        // Vérifier la signature HMAC
-        $encryption_key = Configuration::get('CHAPCHAPPAY_ENCRYPTION_KEY');
-        if (empty($encryption_key)) {
-            error_log('ChapChapPay Validation: Encryption key is empty');
-            http_response_code(500);
-            die('Encryption key not configured');
-        }
+    //     // Vérifier la signature HMAC
+    //     $encryption_key = Configuration::get('CHAPCHAPPAY_ENCRYPTION_KEY');
+    //     if (empty($encryption_key)) {
+    //         error_log('ChapChapPay Validation: Encryption key is empty');
+    //         http_response_code(500);
+    //         die('Encryption key not configured');
+    //     }
         
-        $calculated_hmac = hash_hmac('sha256', $payload, $encryption_key);
+    //     $calculated_hmac = hash_hmac('sha256', $payload, $encryption_key);
         
-        error_log('ChapChapPay Validation: Calculated HMAC: ' . $calculated_hmac);
+    //     error_log('ChapChapPay Validation: Calculated HMAC: ' . $calculated_hmac);
         
-        if (!hash_equals($calculated_hmac, $hmac_header)) {
-            http_response_code(401);
-            error_log('ChapChapPay: Invalid HMAC signature');
-            error_log('ChapChapPay: Expected ' . $calculated_hmac . ', got ' . $hmac_header);
-            die('Invalid signature');
-        }
+    //     if (!hash_equals($calculated_hmac, $hmac_header)) {
+    //         http_response_code(401);
+    //         error_log('ChapChapPay: Invalid HMAC signature');
+    //         error_log('ChapChapPay: Expected ' . $calculated_hmac . ', got ' . $hmac_header);
+    //         die('Invalid signature');
+    //     }
         
-        // Vérifier l'API Key
-        $api_key = Configuration::get('CHAPCHAPPAY_API_KEY');
-        if ($api_key_header !== $api_key) {
-            http_response_code(401);
-            error_log('ChapChapPay: Invalid API key');
-            error_log('ChapChapPay: Expected ' . $api_key . ', got ' . $api_key_header);
-            die('Invalid API key');
-        }
+    //     // Vérifier l'API Key
+    //     $api_key = Configuration::get('CHAPCHAPPAY_API_KEY');
+    //     if ($api_key_header !== $api_key) {
+    //         http_response_code(401);
+    //         error_log('ChapChapPay: Invalid API key');
+    //         error_log('ChapChapPay: Expected ' . $api_key . ', got ' . $api_key_header);
+    //         die('Invalid API key');
+    //     }
         
-        // Parser le JSON
-        $data = json_decode($payload, true);
-        if (!$data) {
-            http_response_code(400);
-            error_log('ChapChapPay: Invalid JSON');
-            die('Invalid JSON');
-        }
+    //     // Parser le JSON
+    //     $data = json_decode($payload, true);
+    //     if (!$data) {
+    //         http_response_code(400);
+    //         error_log('ChapChapPay: Invalid JSON');
+    //         die('Invalid JSON');
+    //     }
         
-        // Traiter le callback
-        $this->processCallback($data);
-    }
+    //     // Traiter le callback
+    //     $this->processCallback($data);
+    // }
     
+    //A RETIRER EN CAS DE PROBLEME 
+    public function postProcess()
+{
+    // Log de début pour debug
+    error_log('ChapChapPay Validation: Starting callback processing');
+
+    // Lire les headers (compatible mod_fcgid où getallheaders() peut être vide)
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $headers = array_change_key_case($headers, CASE_LOWER);
+
+    $hmac_header = $headers['ccp-hmac-signature'] ?? '';
+    $api_key_header = $headers['ccp-api-key'] ?? '';
+
+    if (empty($hmac_header) && isset($_SERVER['HTTP_CCP_HMAC_SIGNATURE'])) {
+        $hmac_header = $_SERVER['HTTP_CCP_HMAC_SIGNATURE'];
+    }
+    if (empty($api_key_header) && isset($_SERVER['HTTP_CCP_API_KEY'])) {
+        $api_key_header = $_SERVER['HTTP_CCP_API_KEY'];
+    }
+
+    error_log('ChapChapPay Validation: HMAC via getallheaders=' . ($headers['ccp-hmac-signature'] ?? 'absent') . ' via $_SERVER=' . ($_SERVER['HTTP_CCP_HMAC_SIGNATURE'] ?? 'absent'));
+
+    // Lire le payload
+    $payload = file_get_contents('php://input');
+
+    error_log('ChapChapPay Validation: Raw payload: ' . $payload);
+    error_log('ChapChapPay Validation: HMAC received: ' . $hmac_header);
+
+    // Vérifier la signature HMAC
+    $encryption_key = Configuration::get('CHAPCHAPPAY_ENCRYPTION_KEY');
+    if (empty($encryption_key)) {
+        error_log('ChapChapPay Validation: Encryption key is empty');
+        http_response_code(500);
+        die('Encryption key not configured');
+    }
+
+    $calculated_hmac = hash_hmac('sha256', $payload, $encryption_key);
+
+    error_log('ChapChapPay Validation: Calculated HMAC: ' . $calculated_hmac);
+
+    if (!hash_equals($calculated_hmac, $hmac_header)) {
+        http_response_code(401);
+        error_log('ChapChapPay: Invalid HMAC signature');
+        error_log('ChapChapPay: Expected ' . $calculated_hmac . ', got ' . $hmac_header);
+        die('Invalid signature');
+    }
+
+    // Vérifier l'API Key
+    $api_key = Configuration::get('CHAPCHAPPAY_API_KEY');
+    if ($api_key_header !== $api_key) {
+        http_response_code(401);
+        error_log('ChapChapPay: Invalid API key');
+        error_log('ChapChapPay: Expected ' . $api_key . ', got ' . $api_key_header);
+        die('Invalid API key');
+    }
+
+    // Parser le JSON
+    $data = json_decode($payload, true);
+    if (!$data) {
+        http_response_code(400);
+        error_log('ChapChapPay: Invalid JSON');
+        die('Invalid JSON');
+    }
+
+    // Traiter le callback
+    $this->processCallback($data);
+}
+
+
     private function processCallback($data)
     {
         // Log pour debug
